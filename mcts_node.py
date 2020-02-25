@@ -8,16 +8,17 @@ class Node:
         self.parent = None
         self.children = []
         self.sputc = 0.0
+        self.weight = 0.0
 
-    def SetWeight(self, weight):
+    def set_weight(self, weight):
         self.weight = weight
 
-    def AppendChild(self, child):
+    def append_child(self, child):
         self.children.append(child)
         child.parent = self
 
-    def IsEqual(self, Node):
-        if (self.state == Node.state):
+    def is_equal(self, node):
+        if self.state == node.state:
             return True
         else:
             return False

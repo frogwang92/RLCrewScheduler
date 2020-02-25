@@ -1,4 +1,5 @@
 import gym
+import copy
 from gym import spaces
 from gym.utils import seeding
 from rlcrew_base import crew
@@ -8,7 +9,7 @@ import numpy as np
 from proj_spec import ttmanager
 from rlcrew_base.crew import Crew
 
-ttmanager.load_tt()
+# ttmanager.load_tt()
 
 
 class JobCrewsEnv(gym.Env):
@@ -23,7 +24,12 @@ class JobCrewsEnv(gym.Env):
     def __init__(self, natural=False):
         self.all_jobs = job.Job.all_jobs
         self.all_job_events = sorted(job.Job.all_job_events, key=lambda x: x.time, reverse=False)
-        self.job_num = len(self.all_jobs)
+        self.job_num = len(self.all_job_events)
+        # np array which stores the job event assigned crew
+        # job0 , job1,  job2...
+        # [0   ,    5,    9...]
+        # crew0, crew5, crew9
+        self.np_all_job_events_assigned_crew = np.full(self.job_num, -1)
         self.crew_num = self.job_num
         self.crew_pool_num = 2  # it's a hard code
         # current job event index, every step + 1
@@ -41,17 +47,24 @@ class JobCrewsEnv(gym.Env):
     def reset(self):
         return self._reset()
 
+    def initial_state(self):
+        return self._reset()
+
     def step(self, action):
         return self._step(action)
 
     def _init_crew(self):
         self.all_crews.clear()
         # array of crew start working time, use to observe the offwork
-        self.np_crew_start_working_time = np.zeros(len(self.all_jobs), np.int)
-        # array of crew pools, indicates the position of crew
-        self.np_crew_pool = np.zeros((self.crew_pool_num, len(self.all_jobs)), np.bool)
+        self.np_crew_start_working_time = np.zeros(self.crew_num, np.int)
         # array of resting crew pool, value = resting time, use to observe the resting status
-        self.np_crew_resting_time = np.zeros(len(self.all_jobs), np.int)
+        self.np_crew_resting_time = np.zeros(self.crew_num, np.int)
+        # array of crew pools, indicates the position of crew
+        self.np_crew_pool = np.zeros((self.crew_pool_num, self.crew_num), np.bool)
+        # array of crew status
+        self.np_crew_status = np.full(self.crew_num, -1)
+        # array of crew's last job
+        self.np_crew_last_job = np.full(self.crew_num, -1)
         # crew cid starts from 0
         new_crew = crew.Crew(0, -1)
         self.all_crews.append(new_crew)
@@ -69,16 +82,13 @@ class JobCrewsEnv(gym.Env):
 
     def _reset(self):
         self.current_job_event_index = 0
-        self.np_jobs = np.full(len(self.all_jobs), -1)
+        self.np_jobs = np.full(self.job_num, -1)
         self._init_crew()
 
         for j in self.all_jobs:
             j.reset()
 
         return self.np_jobs
-
-    def get_init_state(self):
-        return np.zeros(len(self.all_jobs))
 
     def _step(self, action):
         # assert self.action_space.contains(action)
@@ -118,11 +128,15 @@ class JobCrewsEnv(gym.Env):
 
     def observe_actions(self):
         actions = []
-        actions.append(self.get_next_unassigned_crew().cid)
-        # if self.all_job_events[self.current_job_event_index].job.previous is not None:
-        #     if self.all_job_events[self.current_job_event_index].job.previous.crew.status != 4:
-        #         actions.append(self.all_job_events[self.current_job_event_index].job.previous.crew.cid)
 
+        # the current crew
+        # this actually given the keep-current-crew the highest priority
+        if self.all_job_events[self.current_job_event_index].job.previous is not None:
+            previous_crew = self.all_job_events[self.current_job_event_index].job.previous.crew
+            if previous_crew.status != 4 and previous_crew.get_continuous_working_time() < Crew.max_continuous_working_period:
+                actions.append(self.all_job_events[self.current_job_event_index].job.previous.crew.cid)
+
+        # the resting pool
         for i in range(0, len(self.np_crew_resting_time) - 1):
             _current_job = self.all_job_events[self.current_job_event_index].job
             if self.np_crew_pool[_current_job.start_pos, i] == 1:
@@ -130,10 +144,8 @@ class JobCrewsEnv(gym.Env):
                         and _current_job.end_time - self.np_crew_start_working_time[i] < Crew.max_day_working_load:
                     actions.append(i)
                     # print(actions)
-        # the current crew
-        # this actually given the keep-current-crew the highest priority
-        if self.all_job_events[self.current_job_event_index].job.previous is not None:
-            if self.all_job_events[self.current_job_event_index].job.previous.crew.status != 4:
-                actions.append(self.all_job_events[self.current_job_event_index].job.previous.crew.cid)
+
+        # the new crew
+        actions.append(self.get_next_unassigned_crew().cid)
 
         return actions

@@ -43,12 +43,14 @@ class Crew:
     #     return 0
 
     def assign(self, job):
-        reward = 0
+        reward = 1
         if self.status == 0:  # start working, assign a new crew
-            reward = -1
+            reward = 0
             self.start_time = job.start_time
         self.status = 1
         previous_crew = self._do_assign(job)
+        if previous_crew is not self and previous_crew is not None:
+            reward = 0.9
         reward = reward + self.evaluate()
         return reward, self, previous_crew
 
@@ -89,8 +91,13 @@ class Crew:
 
     def evaluate(self):
         if self.status == 1:
-            if self.jobs[-1].end_time - self.start_time > Crew.max_day_working_load:
-                # print(str(self.jobs[-1].end_time) + ", " + str(self.start_time))
+            if self.jobs[-1].end_time - self.start_time > Crew.max_day_working_load:   # over the max working time
                 self.status = 4
                 return 0
         return 0
+
+    def get_continuous_working_time(self):
+        if self.status == 1:
+            return self.jobs[-1].end_time - self.jobs[0].start_time
+        else:
+            return 0

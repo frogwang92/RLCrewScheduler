@@ -39,7 +39,7 @@ class Job:
             _colors[str(crewid)] = 'rgb(' + str(randr) + ', ' + str(randg) + ', ' + str(randb) + ')'
             df.append(dict(Task=j.run, Start=str(j.start_time), Finish=str(j.end_time), Crew=str(crewid)))
 
-        print("crews count = " + str(len(set_of_crews)))
+        print("crews count = " + str(len(set_of_crews)) + "; jobs count = " + str(len(Job.all_jobs)))
 
         fig = ff.create_gantt(df, height=1000, index_col='Crew', title='Crew Schedule', show_colorbar=True, group_tasks=True,
                               showgrid_x=True, showgrid_y=True, colors=_colors)

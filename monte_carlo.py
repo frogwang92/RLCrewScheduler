@@ -9,7 +9,7 @@ from env import crew_and_jobs
 
 env = crew_and_jobs.JobCrewsEnv()
 
-observe_episodes_interval = 1000
+observe_episodes_interval = 10000
 
 
 def mc_prediction(policy, env, num_episodes, discount_factor=1.0):
@@ -156,7 +156,7 @@ def mc_control_epsilon_greedy(env, num_episodes, discount_factor=1.0, epsilon=0.
             returns_count[sa_pair] += 1.0
             Q[state_index][action] = returns_sum[sa_pair] / returns_count[sa_pair]
 
-        print(Q[first_state_index])
+        # print(Q[first_state_index])
         if i_episode % observe_episodes_interval == 0:
             env.plot()
 
@@ -211,5 +211,5 @@ def sample_policy(observation, _env):
 
 
 # mc_prediction(sample_policy, env, num_episodes=10000)
-Q, policy = mc_control_epsilon_greedy(env, num_episodes=10000, epsilon=0.1)
+Q, policy = mc_control_epsilon_greedy(env, num_episodes=100000, epsilon=0.1)
 

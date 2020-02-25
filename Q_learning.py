@@ -15,7 +15,6 @@ observe_episodes_interval = 1000
 
 env = crew_and_jobs.JobCrewsEnv()
 
-
 def make_epsilon_greedy_policy(Q, epsilon, nA, _env):
     """
     Creates an epsilon-greedy policy based
@@ -43,14 +42,19 @@ def make_epsilon_greedy_policy(Q, epsilon, nA, _env):
         for i in range(0, len(actions)):
             if Q[observation][actions[i]] > best_action_value:
                 best_action = actions[i]
+                best_action_value = Q[observation][actions[i]]
+                # print(actions)
+                # print(Q[observation])
+                # print("best action: " + str(best_action) + "; best action value: " + str(best_action_value))
             totalA[actions[i]] = A[i]
+
         totalA[best_action] += (1.0 - epsilon)
         return totalA
 
     return policy_fn
 
 
-def q_learning(env, num_episodes, discount_factor=1.0, alpha=0.5, epsilon=0.1):
+def q_learning(env, num_episodes, discount_factor=1.0, alpha=1, epsilon=0.5):
     """
     Q-Learning algorithm: Off-policy TD control. Finds the optimal greedy policy
     while following an epsilon-greedy policy
@@ -96,6 +100,7 @@ def q_learning(env, num_episodes, discount_factor=1.0, alpha=0.5, epsilon=0.1):
 
         # One step in the environment
         # total_reward = 0.0
+        first_state_index = hash(state.tobytes())
         for t in itertools.count():
             state_index = hash(state.tobytes())
             # Take a step
@@ -118,6 +123,7 @@ def q_learning(env, num_episodes, discount_factor=1.0, alpha=0.5, epsilon=0.1):
 
             state = next_state
 
+        print(Q[first_state_index])
         if (i_episode + 1) % observe_episodes_interval == 0:
             env.plot()
 
