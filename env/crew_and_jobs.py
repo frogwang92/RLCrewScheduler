@@ -94,7 +94,7 @@ class JobCrewsEnv(gym.Env):
         # assert self.action_space.contains(action)
         current_job = self.all_job_events[self.current_job_event_index].job
         assign_reward, current_crew, previous_crew \
-            = self.all_crews[action].assign(current_job)
+            = self.all_crews[action].assign(current_job)       # update with new version _assign
         self._update_crew_pool(current_crew)
         self._update_crew_pool(previous_crew)
         self.np_jobs[self.all_jobs.index(current_job)] = action
@@ -107,6 +107,9 @@ class JobCrewsEnv(gym.Env):
 
     def _evaluate(self):
         return not self.np_jobs.min() == -1
+
+    def _assign(self, crew_id, jobevent_id):
+        pass
 
     @staticmethod
     def plot():
