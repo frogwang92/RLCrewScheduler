@@ -55,6 +55,10 @@ class Job:
         self.previous = None
         self.next = None
         self.crew = None
+        # numeric ids
+        self.jid = -1
+        self.previous_jid = -1
+        self.next_jid = -1
         ev_start = JobEvent(self, 0, start_time)
         ev_end = JobEvent(self, 1, end_time)
         Job.all_job_events.append(ev_start)

@@ -2,9 +2,7 @@ import gym
 import copy
 from gym import spaces
 from gym.utils import seeding
-from rlcrew_base import crew
 from rlcrew_base import job
-from rlcrew_base import job_event
 import numpy as np
 from proj_spec import ttmanager
 from rlcrew_base.crew import Crew
@@ -23,9 +21,16 @@ class JobCrewsEnv(gym.Env):
 
     def __init__(self, natural=False):
         self.all_jobs = sorted(job.Job.all_jobs, key=lambda x: x.start_time, reverse=False)
-        # self.all_job_events = sorted(job.Job.all_job_events, key=lambda x: x.time, reverse=False)
         self.job_num = len(self.all_jobs)
-        self.crew_num = self.job_num       # let the crew number equals the job numbers
+        self.crew_num = self.job_num  # let the crew number equals the job numbers
+        # build the jid connections
+        for i in range(self.job_num):
+            self.all_jobs[i].jid = i
+            if self.all_jobs[i].previous is not None:
+                self.all_jobs[i].previous_jid = self.all_jobs.index(self.all_jobs[i].previous)
+            if self.all_jobs[i].next is not None:
+                self.all_jobs[i].next_jid = self.all_jobs.index(self.all_jobs[i].next)
+
         # np array which stores the job event assigned crew
         # job0 , job1,  job2...
         # [0   ,    5,    9...]
