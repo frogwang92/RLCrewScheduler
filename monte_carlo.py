@@ -9,7 +9,7 @@ from env import crew_and_jobs
 
 env = crew_and_jobs.JobCrewsEnv()
 
-observe_episodes_interval = 10000
+observe_episodes_interval = 10
 
 
 def mc_prediction(policy, env, num_episodes, discount_factor=1.0):

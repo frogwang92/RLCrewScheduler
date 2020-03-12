@@ -18,8 +18,8 @@ run_include_runs = ['050', '030', '021', '001', '031']
 def add_dwellpoint(dp):
     if dp['Platform'] in run_ignore_point or dp['Run'] in run_ignore_runs:
         return
-    if dp['Run'] not in run_include_runs:
-        return
+    # if dp['Run'] not in run_include_runs:
+    #     return
     if all_runs.get(dp['Run']) is None:
         all_runs[dp['Run']] = []
         all_jobs[dp['Run']] = []

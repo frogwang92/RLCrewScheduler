@@ -7,7 +7,8 @@ import numpy as np
 from proj_spec import ttmanager
 from rlcrew_base.crew import Crew
 
-# ttmanager.load_tt()
+
+ttmanager.load_tt()
 
 
 class JobCrewsEnv(gym.Env):
@@ -16,6 +17,7 @@ class JobCrewsEnv(gym.Env):
     create crew object 2 * (len(all_jobs))
     action: pick a crew, assign to a job
     """
+
     def render(self, mode='human'):
         pass
 
@@ -58,8 +60,10 @@ class JobCrewsEnv(gym.Env):
     def _init_crew(self):
         # array of crew start working time, use to observe the offwork
         self.np_crew_start_working_time = np.zeros(self.crew_num, np.int)
+        #
+        self.np_crew_continuous_working_start_time = np.zeros(self.crew_num, np.int)
         # array of resting crew pool, value = resting time, use to observe the resting status
-        self.np_crew_resting_time = np.zeros(self.crew_num, np.int)
+        self.np_crew_start_resting_time = np.zeros(self.crew_num, np.int)
         # array of crew pools, indicates the position of crew
         self.np_crew_pool = np.zeros((self.crew_pool_num, self.crew_num), np.bool)
         # array of crew status
@@ -82,81 +86,100 @@ class JobCrewsEnv(gym.Env):
 
     def _reset(self):
         self.current_job_index = 0
-        self.np_jobs = np.full(self.job_num, -1)
+        self.np_all_job_assigned_crew = np.full(self.job_num, -1)
         self._init_crew()
 
         for j in self.all_jobs:
             j.reset()
 
-        return self.np_jobs
+        return self.np_all_job_assigned_crew
 
     def _step(self, action):
         # assert self.action_space.contains(action)
-        assign_reward = self._assign(self.current_job_index)
+        assign_reward = self._assign(action, self.current_job_index)
         self.current_job_index += 1
         done = self._evaluate()
-        return self.np_jobs, assign_reward, done, {}
+        return self.np_all_job_assigned_crew, assign_reward, done, {}
 
     def _evaluate(self):
-        return not self.np_jobs.min() == -1
+        return not self.np_all_job_assigned_crew.min() == -1
 
     def _assign(self, crew_id, job_index):
+        if crew_id == self.new_crew_index:
+            self.new_crew_index = self.new_crew_index + 1
+
         current_job = self.all_jobs[job_index]
         reward = 0
+        # get the previous crew
+        previous_job = current_job.previous_jid
+        previous_crew = -1
+        if previous_job != -1:
+            previous_crew = self.np_all_job_assigned_crew[previous_job]
+        # return assign reward
+        if previous_crew == crew_id:
+            reward = 1
+        else:
+            if self.np_crew_status[crew_id] == 2:  # assign a resting crew
+                reward = 0.9
+
         # fill in the assign crew array
         self.np_all_job_assigned_crew[job_index] = crew_id
+        # update continuous working time
+        if self.np_crew_status[crew_id] == 2:  # resting -> working
+            self.np_crew_continuous_working_start_time[crew_id] = current_job.start_time
         # update current crew status
-
+        self.np_crew_status[crew_id] = 1  # working
+        self.np_crew_pool[:, crew_id] = 0
         # update current crew start working time
-
+        if self.np_crew_start_working_time[crew_id] == 0:
+            self.np_crew_start_working_time[crew_id] = current_job.start_time
+            self.np_crew_continuous_working_start_time[crew_id] = current_job.start_time
         # update current crew last job
-
+        self.np_crew_last_job[crew_id] = job_index
         # update current crew resting_time
+        self.np_crew_start_resting_time[crew_id] = 0
 
-        # get the last crew
+        # update previous crew status
+        # update previous crew resting_time
+        if previous_crew != -1 and previous_crew != crew_id:
+            self.np_crew_status[previous_crew] = 2  # resting
+            self.np_crew_start_resting_time[previous_crew] = self.all_jobs[previous_job].end_time
+            self.np_crew_pool[self.all_jobs[previous_job].end_pos, previous_crew] = 1
 
-        # update last crew status
+        # assess if this is the last job of a run
+        if current_job.next_jid == -1:
+            self.np_crew_status[crew_id] = 2  # resting
+            self.np_crew_start_resting_time[crew_id] = current_job.end_time
+            self.np_crew_pool[current_job.end_pos, crew_id] = 1
 
-        # update last crew start working time
-
-        # update last crew last job
-
-        # update last crew resting_time
-
-        # update crew pool
-
-        # return assign reward
         return reward
 
-    @staticmethod
-    def plot():
-        job.Job.plot_gantt()
-
-    def observe_current_pool(self):
-        return self.np_jobs, \
-               self.np_crew_pool, \
-               self.np_crew_resting_time, \
-               self.np_crew_start_working_time, \
-               self.all_jobs[self.current_job_index].job, \
-               self.new_crew_index
+    def plot(self):
+        # job.Job.plot_gantt()
+        print(self.new_crew_index)
 
     def observe_actions(self):
         actions = []
 
         # the current crew
         # this actually given the keep-current-crew the highest priority
-        if self.all_jobs[self.current_job_index].job.previous is not None:
-            previous_crew = self.all_jobs[self.current_job_index].job.previous.crew
-            if previous_crew.status != 4 and previous_crew.get_continuous_working_time() < Crew.max_continuous_working_period:
-                actions.append(self.all_jobs[self.current_job_index].job.previous.crew.cid)
+        previous_job_id = self.all_jobs[self.current_job_index].previous_jid
+        if previous_job_id != -1:
+            previous_crew_id = self.np_all_job_assigned_crew[previous_job_id]
+            if self.np_crew_status[previous_crew_id] == 1:
+                # check the end time
+                endtime = self.all_jobs[self.current_job_index].end_time
+                if endtime - self.np_crew_continuous_working_start_time[previous_crew_id] < Crew.max_continuous_working_period:
+                    if endtime - self.np_crew_start_working_time[previous_crew_id] < Crew.max_day_working_load:
+                        actions.append(previous_crew_id)
 
         # the resting pool
-        for i in range(0, len(self.np_crew_resting_time) - 1):
-            _current_job = self.all_jobs[self.current_job_index].job
-            if self.np_crew_pool[_current_job.start_pos, i] == 1:
-                if _current_job.start_time - self.np_crew_resting_time[i] > Crew.min_resting_period \
-                        and _current_job.end_time - self.np_crew_start_working_time[i] < Crew.max_day_working_load:
-                    actions.append(i)
+        # for i in range(0, len(self.np_crew_start_resting_time) - 1):
+        #     _current_job = self.all_jobs[self.current_job_index]
+        #     if self.np_crew_pool[_current_job.start_pos, i] == 1:
+        #         if _current_job.start_time - self.np_crew_start_resting_time[i] > Crew.min_resting_period \
+        #                 and _current_job.end_time - self.np_crew_start_working_time[i] < Crew.max_day_working_load:
+        #             actions.append(i)
                     # print(actions)
 
         # the new crew
