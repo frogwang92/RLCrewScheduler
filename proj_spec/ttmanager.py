@@ -52,4 +52,4 @@ def load_tt():
             add_dwellpoint(row)
     for run in all_runs:
         split(run)
-    job.Job.plot_gantt()
+    # job.Job.plot_gantt()

@@ -182,15 +182,12 @@ def make_epsilon_greedy_policy(Q, epsilon, nA, _env):
 
     def policy_fn(observation):
         actions = _env.observe_actions()    # all available actions
-        totalA = np.zeros(_env.action_space.n)    # all action spaces, same size as np jobs
-        A = np.ones(len(actions), dtype=float) * epsilon / len(actions)
-        # best_action = np.argmax(Q[observation])
-        best_action = actions[0]
-        best_action_value = Q[observation][actions[0]]
-        for i in range(0, len(actions)):
-            if Q[observation][actions[i]] > best_action_value:
-                best_action = actions[i]
-            totalA[actions[i]] = A[i]
+        totalA = actions * epsilon / np.sum(actions)    # all action spaces, same size as np jobs
+
+        best_action = np.argmax(Q[observation])
+        if Q[observation][best_action] < 0:
+            best_action = np.argwhere(totalA > 0)[0][0]
+
         totalA[best_action] += (1.0 - epsilon)
         return totalA
 
