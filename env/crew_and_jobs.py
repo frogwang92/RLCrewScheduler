@@ -1,5 +1,7 @@
 import gym
 import copy
+import random
+import plotly.figure_factory as ff
 from gym import spaces
 from gym.utils import seeding
 from rlcrew_base import job
@@ -155,8 +157,36 @@ class JobCrewsEnv(gym.Env):
         return reward
 
     def plot(self):
-        # job.Job.plot_gantt()
         print(self.new_crew_index)
+        df = []
+        # df.append(dict(Task='Launch Time', Start=str(43200), Finish=str(46800), Crew='0'))
+        # df.append(dict(Task='Dinner Time', Start=str(61200), Finish=str(64800), Crew='0'))
+        _colors = {}
+        set_of_crews = set()
+        for jj in job.Job.all_jobs:
+            jid = jj.jid
+            crewid = self.np_all_job_assigned_crew[jid]
+            if crewid != -1:
+                set_of_crews.add(crewid)
+            randr = random.randint(0, 255)
+            randg = random.randint(0, 255)
+            randb = random.randint(0, 255)
+            _colors[str(crewid)] = 'rgb(' + str(randr) + ', ' + str(randg) + ', ' + str(randb) + ')'
+            df.append(dict(Task=jj.run,
+                           Start=str(jj.start_time),
+                           Finish=str(jj.end_time),
+                           Crew=str(crewid)))
+
+        fig = ff.create_gantt(df,
+                              height=1000,
+                              index_col='Crew',
+                              title='Crew Schedule',
+                              show_colorbar=True,
+                              group_tasks=True,
+                              showgrid_x=True,
+                              showgrid_y=True,
+                              colors=_colors)
+        fig.show()
 
     def observe_actions(self):
         _current_job = self.all_jobs[self.current_job_index]

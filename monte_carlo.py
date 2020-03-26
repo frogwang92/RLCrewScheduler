@@ -9,7 +9,7 @@ from env import crew_and_jobs
 
 env = crew_and_jobs.JobCrewsEnv()
 
-observe_episodes_interval = 10
+observe_episodes_interval = 1000
 
 
 def mc_prediction(policy, env, num_episodes, discount_factor=1.0):
@@ -129,8 +129,6 @@ def mc_control_epsilon_greedy(env, num_episodes, discount_factor=1.0, epsilon=0.
         # An episode is an array of (state, action, reward) tuples
         episode = []
         state = env.reset()
-        first_state_index = hash(state.tobytes())
-        second_state_index = -1
         for t in range(2000):
             state_index = hash(state.tobytes())
             probs = policy(state_index)
